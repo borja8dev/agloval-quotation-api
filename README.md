@@ -27,16 +27,6 @@ If Agloval approves this approach, I would:
    Agregar:
    markdown**Note:** This runs locally in development mode. Production deployment would require additional steps (database migration, server setup, etc).
 
-🎯 ¿Quieres que actualice el README con estos cambios?
-Sí/No
-Si SÍ, te paso el README actualizado completo en el siguiente mensaje.
-Si NO, dejamos el README como está (de todas formas está claro que es un proyecto de portfolio).
-
-Mi recomendación: Pequeños cambios para aclarar desde el inicio que es una demo profesional, no un sistema en producción. Eso demuestra claridad en scope a reclutadores.
-¿Qué prefieres? 👇Has dicho: SíSí20:22Claude ha respondido: ✅ README ACTUALIZADO - Versión Demo/Portfolio✅ README ACTUALIZADO - Versión Demo/Portfolio
-Copia ESTO ENTERO y reemplaza tu README.md:
-markdown# Agloval Quotation API
-
 Demonstration REST API showcasing automated quotation generation for Agloval SL (MVP proof-of-concept).
 
 **Important:** This is a professional portfolio project demonstrating a solution for Agloval. The API is fully functional but not yet integrated with Agloval's production systems. Frontend, database integration, and production deployment would follow if the concept is approved.
