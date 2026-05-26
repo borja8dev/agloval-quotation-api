@@ -1,0 +1,33 @@
+# Build outputs
+target/
+build/
+dist/
+.gradle/
+.m2/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# Dependencies
+.mvn/
+mvn/
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated code
+*.generated.*
+
+# Test coverage
+coverage/
+jacoco/
