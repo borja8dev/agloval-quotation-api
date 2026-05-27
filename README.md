@@ -1,4 +1,31 @@
-# Agloval Quotation API
+### Project Scope & Status
+
+**This is a demonstration MVP**, not a production system currently deployed at Agloval.
+
+**What's Included (v0.1-v1.3):**
+- ✅ Fully functional REST API
+- ✅ JWT authentication + role-based access
+- ✅ Quotation calculation engine
+- ✅ PDF generation
+- ✅ Docker containerization
+- ✅ Professional testing (>60% coverage)
+
+**What's NOT Included Yet:**
+- ❌ Frontend/Web UI (planned as separate project)
+- ❌ Integration with Agloval's existing systems
+- ❌ Deployment on Agloval's production servers
+- ❌ Email notifications (could be added)
+
+**Next Steps (After v1.3):**
+If Agloval approves this approach, I would:
+1. Build a professional frontend (React/Vue)
+2. Integrate with their existing database
+3. Deploy on their production environment
+4. Add email notifications
+5. Train staff on the system
+   Cambio 3: En "Quick Start" aclarar que es local
+   Agregar:
+   markdown**Note:** This runs locally in development mode. Production deployment would require additional steps (database migration, server setup, etc).
 
 Demonstration REST API showcasing automated quotation generation for Agloval SL (MVP proof-of-concept).
 
