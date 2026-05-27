@@ -37,3 +37,9 @@ build/
 
 ### Mac OS ###
 .DS_Store
+# IDE
+.idea/
+*.iml
+
+# Claude Code internal
+.atl/
