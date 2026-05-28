@@ -1,14 +1,22 @@
 package com.agloval.infrastructure.input.rest;
 
+import com.agloval.application.dto.ErrorResponse;
 import com.agloval.application.dto.QuotationRequest;
 import com.agloval.application.dto.QuotationResponse;
 import com.agloval.application.port.in.QuotationUseCase;
 import com.agloval.domain.enums.QuotationStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,39 +32,95 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/quotations")
 @RequiredArgsConstructor
-@Tag(name = "Quotations", description = "Quotation management")
+@Tag(name = "Quotations", description = "Create and manage quotations — each quotation groups line items and calculates totals automatically")
 public class QuotationController {
 
     private final QuotationUseCase quotationUseCase;
 
     @PostMapping
-    @Operation(summary = "Create a new quotation")
+    @Operation(
+            summary = "Create a new quotation",
+            description = "Creates a quotation for a given client. Each line item's total is calculated as: " +
+                    "quantity × unitPrice × (1 − discountPercent / 100). " +
+                    "The quotation subtotal is the sum of all line totals. A unique quotation number is auto-generated."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Quotation created successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = QuotationResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input — validation errors",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "User or product not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<QuotationResponse> createQuotation(@Valid @RequestBody QuotationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(quotationUseCase.createQuotation(request));
     }
 
     @GetMapping
-    @Operation(summary = "Get all quotations")
+    @Operation(summary = "List all quotations", description = "Returns all quotations in the system regardless of status.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of quotations",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @ArraySchema(schema = @Schema(implementation = QuotationResponse.class))))
+    })
     public ResponseEntity<List<QuotationResponse>> getAllQuotations() {
         return ResponseEntity.ok(quotationUseCase.getAllQuotations());
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get quotation by ID")
-    public ResponseEntity<QuotationResponse> getQuotationById(@PathVariable Long id) {
+    @Operation(summary = "Get quotation by ID", description = "Returns a full quotation including all line items and calculated totals.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Quotation found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = QuotationResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Quotation not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<QuotationResponse> getQuotationById(
+            @Parameter(description = "Numeric ID of the quotation", example = "1", required = true)
+            @PathVariable Long id) {
         return ResponseEntity.ok(quotationUseCase.getQuotationById(id));
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Update quotation status")
-    public ResponseEntity<QuotationResponse> updateStatus(@PathVariable Long id,
-                                                           @RequestParam QuotationStatus status) {
+    @Operation(
+            summary = "Update quotation status",
+            description = "Transitions a quotation to a new status. " +
+                    "Valid values: DRAFT → SENT → CONFIRMED → DONE or ARCHIVED."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Status updated successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = QuotationResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Quotation not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<QuotationResponse> updateStatus(
+            @Parameter(description = "Numeric ID of the quotation", example = "1", required = true)
+            @PathVariable Long id,
+            @Parameter(description = "New status to apply", example = "SENT", required = true)
+            @RequestParam QuotationStatus status) {
         return ResponseEntity.ok(quotationUseCase.updateStatus(id, status));
     }
 
     @GetMapping("/user/{userId}")
-    @Operation(summary = "Get quotations by user ID")
-    public ResponseEntity<List<QuotationResponse>> getQuotationsByUser(@PathVariable Long userId) {
+    @Operation(summary = "Get quotations by user", description = "Returns all quotations associated with a specific client.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of quotations for the user",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @ArraySchema(schema = @Schema(implementation = QuotationResponse.class)))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<List<QuotationResponse>> getQuotationsByUser(
+            @Parameter(description = "Numeric ID of the user", example = "1", required = true)
+            @PathVariable Long userId) {
         return ResponseEntity.ok(quotationUseCase.getQuotationsByUserId(userId));
     }
 }

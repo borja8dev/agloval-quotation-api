@@ -50,7 +50,7 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 - ✅ **Centralized error handling** with `GlobalExceptionHandler`
 - ✅ **Correct HTTP status codes** (201 Created, 204 No Content, 400 Bad Request, 404 Not Found, 409 Conflict, 500 Server Error)
 - ✅ **Professional error responses** with status + message + timestamp + validation errors list
-- ✅ **Swagger/OpenAPI documentation** at `/swagger-ui.html`
+- ✅ **Swagger/OpenAPI documentation** at `/swagger-ui.html` — fully annotated with descriptions, examples, and all response codes
 - ✅ **MockMvc tests** for controllers + Mockito unit tests for services (~52% coverage)
 
 #### Endpoints Implemented
@@ -72,6 +72,13 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 | GET | `/api/v1/quotations/{id}` | Get quotation by ID |
 | PATCH | `/api/v1/quotations/{id}/status` | Update quotation status |
 | GET | `/api/v1/quotations/user/{userId}` | Get quotations by user |
+
+#### API Documentation (Swagger)
+- `@Schema` with descriptions and examples on all DTOs
+- `@ApiResponses` documenting every possible status code per endpoint
+- `@Parameter` on all path/query variables
+- OpenAPI info: title, version, markdown description, contact, MIT license, server URL
+- Status code table and architecture overview visible directly in Swagger UI
 
 #### Code Quality
 - Hexagonal Architecture (domain → application → infrastructure)
