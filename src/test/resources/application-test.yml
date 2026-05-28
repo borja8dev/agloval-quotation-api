@@ -11,3 +11,9 @@ spring:
     show-sql: false
   flyway:
     enabled: false
+
+app:
+  jwt:
+    secret: test-secret-key-that-is-long-enough-for-hs256-algorithm-ok
+    access-token-expiry: 900000
+    refresh-token-expiry: 604800000

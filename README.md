@@ -31,23 +31,61 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 
 **Important:** This is a professional portfolio project demonstrating a solution for Agloval. The API is fully functional but not yet integrated with Agloval's production systems. Frontend, database integration, and production deployment would follow if the concept is approved.
 
-**Current Version:** v0.3.0 (Phase C - Real Persistence + JPA Testing) | [Releases](../../releases)
+**Current Version:** v1.0.0 (Phase D - JWT Security + RBAC) | [Releases](../../releases)
 
 ---
 
 ## 📊 Current Status
 
-**Version:** v0.3.0  
-**Phase:** C - Real Persistence + JPA Testing  
+**Version:** v1.0.0  
+**Phase:** D - Spring Security + JWT + Role-Based Access Control  
 **Status:** ✅ Complete and Stable  
 **Environment:** Development/Demo (Local)
 
-### Features in v0.3.0 (Current)
+### Features in v1.0.0 (Current)
+
+#### Security Layer
+- ✅ **JWT access tokens** — HS256, 15 min expiry, claims: `sub` (userId), `roles`, `iat`, `exp`, `jti`
+- ✅ **Refresh token rotation** — UUID-based, 7 days, stored in `jwt_refresh_tokens` table, revoked on use
+- ✅ **BCrypt password encoding** — strength 12
+- ✅ **Password policy** — min 8 chars, ≥1 uppercase, ≥1 digit, ≥1 special character
+- ✅ **Role-based access** — `ROLE_CLIENT` vs `ROLE_ADMIN` with endpoint-level matchers
+- ✅ **Rate limiting** — `/api/v1/auth/login`: max 5 attempts/IP in 15 min → 429 (Bucket4j)
+- ✅ **Stateless auth** — no sessions, JWT parsed on every request via `JwtAuthenticationFilter`
+- ✅ **Flyway V002** — adds `password`, `role`, `created_at` to `users`; creates `jwt_refresh_tokens`
+
+#### Auth Endpoints
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/auth/login` | Public | Returns `accessToken` + `refreshToken` |
+| POST | `/api/v1/auth/register` | Public | Creates user with `ROLE_CLIENT`, returns tokens |
+| POST | `/api/v1/auth/refresh` | Public | Rotates refresh token, returns new pair |
+| POST | `/api/v1/auth/logout` | — | Revokes refresh token for user |
+
+#### Endpoint Protection
+| Pattern | Required Role |
+|---------|--------------|
+| `GET /api/v1/products/**` | Any authenticated |
+| `POST/PUT/DELETE /api/v1/products/**` | `ROLE_ADMIN` |
+| `DELETE /api/v1/quotations/**` | `ROLE_ADMIN` |
+| `/api/v1/quotations/**` | Any authenticated |
+| `/api/v1/users/**` | `ROLE_ADMIN` |
+| `/api/v1/auth/**`, Swagger | Public |
+
+#### Security Tests (32 new, 76 total, 0 failures)
+- `JwtTokenProviderTest` — 7 unit tests (valid, expired, tampered, wrong secret, claims extraction)
+- `PasswordValidatorTest` — 6 unit tests (all rules, null)
+- `AuthControllerTest` — 6 MockMvc tests (login/logout/refresh happy + error paths)
+- `SecurityConfigTest` — 4 integration tests (401 unauthenticated, 403 wrong role, 200 correct role, public endpoints)
+- `SecurityIntegrationTest` — 5 end-to-end tests (valid token, tampered 401, rate limit 429, swagger public)
+- `JwtRefreshTokenJpaRepositoryTest` — 4 persistence tests
+
+### Features in v0.3.0
 
 #### Persistence Layer
 - ✅ **PostgreSQL via Docker Compose** with `pg_isready` healthcheck
 - ✅ **`orphanRemoval = true`** on `Quotation.lines` — removing a line from the collection deletes it from the DB
-- ✅ **`@DataJpaTest` suite** — 17 new persistence integration tests (44 total, 0 failures)
+- ✅ **`@DataJpaTest` suite** — 17 persistence integration tests
   - `UserJpaRepositoryTest` — save, findById, existsByEmail, findAll, deleteById (7 tests)
   - `ProductJpaRepositoryTest` — save, findById, findAll, existsById, deleteById (5 tests)
   - `QuotationJpaRepositoryTest` — save, findByUserId, cascade persist, orphanRemoval (6 tests)
@@ -115,11 +153,10 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 
 ### Roadmap
 
-- **v0.4.0 (Phase D):** Spring Security + JWT authentication + role-based access control
-- **v1.0.0 (Phase E):** Quotation calculation engine with volume discounts
-- **v1.1.0 (Phase F):** PDF generation
-- **v1.2.0 (Phase G):** Docker full containerization (app + DB) + deployment setup
-- **v1.3.0 (Phase H):** Code polishing, performance optimization, >60% coverage
+- **v1.1.0 (Phase E):** Quotation calculation engine with volume discounts
+- **v1.2.0 (Phase F):** PDF generation
+- **v1.3.0 (Phase G):** Docker full containerization (app + DB) + deployment setup
+- **v1.4.0 (Phase H):** Code polishing, performance optimization, >60% coverage
 
 ---
 
@@ -532,12 +569,12 @@ This is a comprehensive 14-week project divided into 7 phases (2 weeks each). Ea
 |-------|----------|---------------|---------|--------|
 | **A** | 2 weeks | Maven setup, Domain entities, JPA mappings | v0.1.0 | ✅ DONE |
 | **B** | 2 weeks | REST API endpoints, input validation, error handling, Swagger | v0.2.0 | ✅ DONE |
-| **C** | 2 weeks | Real persistence (docker-compose, JPA testing, orphanRemoval) | v0.3.0 | ✅ CURRENT |
-| **D** | 2 weeks | Spring Security + JWT authentication + role-based access | v0.4.0 | ⏳ NEXT |
-| **E** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.0.0 | ⏳ PLANNED |
-| **F** | 2 weeks | PDF generation | v1.1.0 | ⏳ PLANNED |
-| **G** | 2 weeks | Docker full containerization + deployment setup | v1.2.0 | ⏳ PLANNED |
-| **H** | 2 weeks | Code refactoring, final testing, performance optimization | v1.3.0 | ⏳ PLANNED |
+| **C** | 2 weeks | Real persistence (docker-compose, JPA testing, orphanRemoval) | v0.3.0 | ✅ DONE |
+| **D** | 2 weeks | Spring Security + JWT + BCrypt + RBAC + rate limiting | v1.0.0 | ✅ CURRENT |
+| **E** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.1.0 | ⏳ NEXT |
+| **F** | 2 weeks | PDF generation | v1.2.0 | ⏳ PLANNED |
+| **G** | 2 weeks | Docker full containerization + deployment setup | v1.3.0 | ⏳ PLANNED |
+| **H** | 2 weeks | Code refactoring, final testing, performance optimization | v1.4.0 | ⏳ PLANNED |
 
 ### Phase A: Domain Layer (Current)
 
@@ -805,6 +842,6 @@ Backend Developer in Training | Java + Spring Boot Specialist
 ---
 
 **Last Updated:** May 28, 2026  
-**Current Phase:** C - Real Persistence + JPA Testing  
-**Next Milestone:** v0.4.0 - Spring Security + JWT  
+**Current Phase:** D - Spring Security + JWT + RBAC  
+**Next Milestone:** v1.1.0 - Quotation Calculation Engine  
 **Repository:** [GitHub](https://github.com/borja8dev/agloval-quotation-api)

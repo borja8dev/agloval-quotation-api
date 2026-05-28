@@ -2,9 +2,13 @@ package com.agloval.infrastructure.config;
 
 import com.agloval.application.dto.ErrorResponse;
 import com.agloval.domain.exception.DuplicateEmailException;
+import com.agloval.domain.exception.InvalidCredentialsException;
+import com.agloval.domain.exception.InvalidRefreshTokenException;
+import com.agloval.domain.exception.PasswordValidationException;
 import com.agloval.domain.exception.ProductNotFoundException;
 import com.agloval.domain.exception.QuotationNotFoundException;
 import com.agloval.domain.exception.UserNotFoundException;
+import com.agloval.infrastructure.security.RoleAuthorizationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +21,21 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler({InvalidCredentialsException.class, InvalidRefreshTokenException.class})
+    public ResponseEntity<ErrorResponse> handleUnauthorized(RuntimeException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(RoleAuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(RoleAuthorizationException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(PasswordValidationException.class)
+    public ResponseEntity<ErrorResponse> handlePasswordValidation(PasswordValidationException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request.getRequestURI(), null);
+    }
 
     @ExceptionHandler({UserNotFoundException.class, ProductNotFoundException.class, QuotationNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex, HttpServletRequest request) {
@@ -40,7 +59,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex, HttpServletRequest request) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
-                ex.getMessage(), request.getRequestURI(), null);
+                "An unexpected error occurred", request.getRequestURI(), null);
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String error,

@@ -71,20 +71,22 @@ public class JwtTokenProvider {
 - **Password Reset:** email link with temporary token (valid 1 hour)
 
 ### Endpoint Protection
+⚠️ All endpoints use the prefix /api/v1/ (not /api/ as old versions of this spec showed)
+
 Public endpoints:
-POST /api/auth/login        (no auth required)
-POST /api/auth/register     (no auth required)
+POST /api/v1/auth/login        (no auth required)
+POST /api/v1/auth/register     (no auth required)
 Protected (ROLE_CLIENT):
-GET /api/quotations         (own quotations)
-POST /api/quotations        (create own)
-GET /api/quotations/{id}    (own only)
-PUT /api/quotations/{id}    (own only)
+GET /api/v1/quotations         (own quotations)
+POST /api/v1/quotations        (create own)
+GET /api/v1/quotations/{id}    (own only)
 Protected (ROLE_ADMIN):
-GET /api/quotations         (all)
-DELETE /api/quotations/{id} (any)
-POST /api/products          (create)
-PUT /api/products/{id}      (update)
-DELETE /api/products/{id}   (delete)
+GET /api/v1/quotations         (all)
+DELETE /api/v1/quotations/{id} (any)
+POST /api/v1/products          (create)
+PUT /api/v1/products/{id}      (update)
+DELETE /api/v1/products/{id}   (delete)
+GET/PUT/DELETE /api/v1/users/** (admin only)
 
 ### Roles
 - **ROLE_CLIENT:** create/view own quotations, view own profile
@@ -104,9 +106,9 @@ Allowed Headers: Authorization, Content-Type
 Credentials: true
 
 ### Rate Limiting
-- `/api/auth/login`: max 5 failed attempts per IP in 15 minutes → 429 Too Many Requests
-- Protected endpoints: max 100 requests per minute per user
-- Implementation: Spring Cloud Gateway or custom interceptor
+- `/api/v1/auth/login`: max 5 failed attempts per IP in 15 minutes → 429 Too Many Requests
+- Implementation: `LoginRateLimitFilter` (Bucket4j 8.x, `ConcurrentHashMap<IP, Bucket>`)
+- Bucket4j 8.x API: `Bucket.builder().addLimit(Bandwidth.builder().capacity(n).refillIntervally(n, Duration.ofMinutes(m)).build()).build()`
 
 ### Exception Handling (HTTP Status Codes)
 401 Unauthorized:
@@ -148,33 +150,69 @@ Password change: user_id, timestamp
 - ❌ Refresh tokens
 - ❌ API secrets or keys
 
-### Testing Security (@SpringBootTest or @WebMvcTest)
+### Testing Security — Critical Patterns (Java 25 + Spring Security)
+
+⚠️ Running Java 25: ByteBuddy does NOT support mocking concrete classes. Only mock interfaces.
+If `@MockBean SomeConcreteClass` appears, it will fail with:
+`Java 25 (69) is not supported by Byte Buddy — set net.bytebuddy.experimental`
+
+**Pattern for @WebMvcTest controller tests (non-security tests):**
+```java
+@WebMvcTest(
+    value = MyController.class,
+    excludeAutoConfiguration = {SecurityAutoConfiguration.class, SecurityFilterAutoConfiguration.class}
+)
+@AutoConfigureMockMvc(addFilters = false)
+@Import(GlobalExceptionHandler.class)
+class MyControllerTest { ... }
+```
+Do NOT add `@MockBean(JwtTokenProvider.class)` — JwtTokenProvider is a concrete class and will fail on Java 25.
+
+⚠️ `JwtAuthenticationFilter` and `LoginRateLimitFilter` must NOT be `@Component`.
+They are created as `@Bean` inside `SecurityConfig` only. If they were `@Component`,
+`@WebMvcTest` would scan them as Filters and fail to inject `JwtTokenProvider`.
+
+**Pattern for security integration tests:**
+Use `@SpringBootTest + @AutoConfigureMockMvc` (real filter chain, no exclusions).
+`@MockBean` only for use-case interfaces (not concrete infrastructure beans).
+
+**JwtTokenProvider tests (standalone, no Spring context):**
+Use `ReflectionTestUtils.setField(provider, "jwtSecret", SECRET)` to inject values.
+JJWT 0.12.3 API (different from older versions):
+```java
+// Generate
+Jwts.builder().id(uuid).subject(userId).claim("roles", roles)
+    .issuedAt(now).expiration(expiry).signWith(key).compact()
+// Validate
+Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload()
+```
+
 JwtTokenProvider tests:
 ✓ generateAccessToken returns valid JWT
-✓ generateRefreshToken saves to DB
 ✓ validateToken returns true for valid token
 ✓ validateToken returns false for expired token
 ✓ validateToken returns false for tampered token
-✓ getClaimsFromToken extracts correct userId and roles
-✓ revokeRefreshToken deletes from DB
-SecurityConfig tests:
-✓ ROLE_CLIENT cannot access /api/products (403)
-✓ ROLE_ADMIN can access /api/products (200)
-✓ Client can access own quotations (200)
-✓ Client cannot access other user's quotations (403)
-AuthController tests:
-✓ POST /api/auth/login with valid credentials returns access_token + refresh_token
-✓ POST /api/auth/login with invalid credentials returns 401
-✓ POST /api/auth/login with invalid email format returns 400
-✓ POST /api/auth/refresh with expired refresh token returns 401
-✓ POST /api/auth/logout revokes refresh token
-✓ After logout, refresh token cannot be used
-Integration tests:
-✓ Login → get token → access protected endpoint (200)
-✓ Login → token expires → refresh → new token works (200)
-✓ Login → token modified → access fails (401)
-✓ Login → logout → token revoked (401 on refresh)
+✓ validateToken returns false for wrong secret
+✓ getClaims extracts correct userId and roles
+✓ token has jti claim (UUID)
+SecurityConfig tests (@SpringBootTest):
+✓ ROLE_CLIENT cannot POST /api/v1/products (403)
+✓ ROLE_ADMIN can GET /api/v1/products (not 401/403)
+✓ Unauthenticated request → 401
+✓ /api/v1/auth/** is public (not 401/403)
+AuthController tests (@WebMvcTest, security excluded):
+✓ POST /api/v1/auth/login with valid credentials returns access_token + refresh_token
+✓ POST /api/v1/auth/login with invalid credentials returns 401
+✓ POST /api/v1/auth/login with invalid email format returns 400
+✓ POST /api/v1/auth/refresh with valid token returns new tokens
+✓ POST /api/v1/auth/refresh with expired token returns 401
+✓ POST /api/v1/auth/logout returns 204
+Integration tests (@SpringBootTest):
+✓ Valid token → GET protected → not 401
+✓ Tampered token → GET protected → 401
+✓ No token → GET protected → 401 with JSON body
 ✓ Rate limiting: 6th login attempt in 15 min returns 429
+✓ Swagger /v3/api-docs is public
 
 ### Folder Structure
 infrastructure/security/
@@ -192,27 +230,24 @@ domain/entity/
 └─ AuditLog.java                      (optional: log security events)
 
 ### Configuration (application.yml)
+⚠️ CORS config lives under `app.cors.*` (not `spring.security.cors.*` — that namespace is non-standard)
+
 ```yaml
 app:
   jwt:
-    secret: ${JWT_SECRET:your-secret-key-min-32-chars}  # Load from env
+    secret: ${JWT_SECRET:agloval-dev-secret-key-min-32-chars-for-hs256-ok}
     access-token-expiry: 900000     # 15 minutes in ms
     refresh-token-expiry: 604800000 # 7 days in ms
-  
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:8080
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: Authorization,Content-Type,Accept
+    allow-credentials: true
   security:
     bcrypt-strength: 12
-    password-min-length: 8
     rate-limit:
       login-attempts: 5
       window-minutes: 15
-
-spring:
-  security:
-    cors:
-      allowed-origins: http://localhost:3000, http://localhost:8080
-      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-      allowed-headers: Authorization,Content-Type
-      allow-credentials: true
 ```
 
 ### Dependencies (pom.xml)
@@ -242,11 +277,12 @@ spring:
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
 
-<!-- Rate limiting (optional) -->
+<!-- Rate limiting -->
+<!-- ⚠️ CORRECT groupId is com.bucket4j — io.github.bucket4j does NOT exist on Maven Central -->
 <dependency>
-    <groupId>io.github.bucket4j</groupId>
+    <groupId>com.bucket4j</groupId>
     <artifactId>bucket4j-core</artifactId>
-    <version>7.6.0</version>
+    <version>8.10.1</version>
 </dependency>
 ```
 
@@ -292,6 +328,37 @@ docker-compose up
 3. Revisa application/port/out/ para interfaces
 4. Mira infrastructure/output/ para implementaciones
 5. Tests in src/test/ for examples
+
+## Known Gotchas & Hard-Won Lessons
+
+### Java 25 + Lombok
+Lombok 1.18.36 (shipped with Spring Boot 3.4) does NOT work on Java 25.
+Fix: pin `<lombok.version>1.18.40</lombok.version>` + explicit `annotationProcessorPaths` in pom.xml.
+
+### Java 25 + Mockito (@MockBean)
+`@MockBean` on **concrete classes** fails on Java 25 — ByteBuddy doesn't support bytecode version 69.
+Rule: only `@MockBean` interfaces. For concrete infrastructure beans (JwtTokenProvider, filters),
+avoid mocking in controller tests entirely (exclude security and disable filters instead).
+
+### @WebMvcTest + Spring Security filters
+`@WebMvcTest` scans `@Component` beans that implement `Filter`. If `JwtAuthenticationFilter`
+were `@Component`, the test context would fail (needs `JwtTokenProvider` which is not in the slice).
+Fix: filters are NOT `@Component` — they are `@Bean` in `SecurityConfig` only.
+
+### Bucket4j dependency
+The groupId `io.github.bucket4j` does **not exist** on Maven Central.
+Correct dependency: `com.bucket4j:bucket4j-core:8.10.1`.
+Bucket4j 8.x API changed from 7.x: use `Bandwidth.builder().capacity().refillIntervally().build()`.
+
+### Flyway + H2 in tests
+Tests use `application-test.yml` with `flyway.enabled: false` and `ddl-auto: create-drop`.
+Never enable Flyway in test profile — H2 doesn't support all PostgreSQL-specific SQL.
+
+### JJWT 0.12.3 API
+Different from older JJWT versions. Key methods:
+- `Jwts.builder().id()`, `.subject()`, `.claim()`, `.issuedAt()`, `.expiration()`, `.signWith(key).compact()`
+- `Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload()`
+- Key creation: `Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8))`
 
 ## Established Patterns
 - Services in application/ inject ports (interfaces), not implementations

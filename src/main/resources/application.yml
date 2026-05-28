@@ -29,3 +29,19 @@ springdoc:
 
 server:
   port: 8080
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:agloval-dev-secret-key-min-32-chars-for-hs256-ok}
+    access-token-expiry: 900000
+    refresh-token-expiry: 604800000
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:8080
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: Authorization,Content-Type,Accept
+    allow-credentials: true
+  security:
+    bcrypt-strength: 12
+    rate-limit:
+      login-attempts: 5
+      window-minutes: 15
