@@ -59,7 +59,7 @@ public class Quotation {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @OneToMany(mappedBy = "quotation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "quotation", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private List<QuotationLine> lines = new ArrayList<>();
 
