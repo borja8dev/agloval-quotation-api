@@ -31,42 +31,77 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 
 **Important:** This is a professional portfolio project demonstrating a solution for Agloval. The API is fully functional but not yet integrated with Agloval's production systems. Frontend, database integration, and production deployment would follow if the concept is approved.
 
-**Current Version:** v0.1.0 (Phase A - Domain Layer) | [Releases](../../releases)
+**Current Version:** v0.2.0 (Phase B - REST API Complete) | [Releases](../../releases)
 
 ---
 
 ## 📊 Current Status
 
-**Version:** v0.1.0  
-**Phase:** A - Domain Layer Setup  
+**Version:** v0.2.0  
+**Phase:** B - REST API Complete  
 **Status:** ✅ Complete and Stable  
 **Environment:** Development/Demo (Local)
+
+### Features in v0.2.0 (Current)
+
+#### Core Features
+- ✅ **15 REST endpoints** (CRUD for User, Product, Quotation)
+- ✅ **Input validation** with `@Valid` + custom constraints
+- ✅ **Centralized error handling** with `GlobalExceptionHandler`
+- ✅ **Correct HTTP status codes** (201 Created, 204 No Content, 400 Bad Request, 404 Not Found, 409 Conflict, 500 Server Error)
+- ✅ **Professional error responses** with status + message + timestamp + validation errors list
+- ✅ **Swagger/OpenAPI documentation** at `/swagger-ui.html`
+- ✅ **MockMvc tests** for controllers + Mockito unit tests for services (~52% coverage)
+
+#### Endpoints Implemented
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/users` | Create user |
+| GET | `/api/v1/users` | List all users |
+| GET | `/api/v1/users/{id}` | Get user by ID |
+| PUT | `/api/v1/users/{id}` | Update user |
+| DELETE | `/api/v1/users/{id}` | Delete user |
+| POST | `/api/v1/products` | Create product |
+| GET | `/api/v1/products` | List all products |
+| GET | `/api/v1/products/{id}` | Get product by ID |
+| PUT | `/api/v1/products/{id}` | Update product |
+| DELETE | `/api/v1/products/{id}` | Delete product |
+| POST | `/api/v1/quotations` | Create quotation with lines |
+| GET | `/api/v1/quotations` | List all quotations |
+| GET | `/api/v1/quotations/{id}` | Get quotation by ID |
+| PATCH | `/api/v1/quotations/{id}/status` | Update quotation status |
+| GET | `/api/v1/quotations/user/{userId}` | Get quotations by user |
+
+#### Code Quality
+- Hexagonal Architecture (domain → application → infrastructure)
+- Clean Code principles (methods <30 lines, single responsibility)
+- SOLID principles respected
+- Manual DTO ↔ entity mapping (no MapStruct dependency)
+- Quotation line total calculation with discount factor
+
+#### Testing (v0.2.0)
+- 26 tests passing, 0 failures
+- `UserServiceTest`, `ProductServiceTest` — Mockito unit tests
+- `UserControllerTest`, `ProductControllerTest` — MockMvc integration tests
+- `application-test.yml` — H2 in-memory for test slice
 
 ### Features in v0.1.0
 
 - ✅ Maven project scaffold with Spring Boot 3.4
-- ✅ Domain entities (User, Product, Category, Quotation, QuotationLine)
-- ✅ JPA mappings with @OneToMany/@ManyToOne relationships
-- ✅ Flyway migration structure ready for database schema
-- ✅ CLAUDE.md development guidelines and patterns
-- ✅ .claudeignore optimization for Claude Code context
-- ✅ Initial test framework setup (JUnit5)
+- ✅ Domain entities (User, Product, Quotation, QuotationLine) with full JPA mappings
+- ✅ OneToMany / ManyToOne relationships with LAZY loading
+- ✅ Flyway migration `V001__create_initial_schema.sql`
+- ✅ CLAUDE.md development guidelines
 - ✅ Git initialized with Conventional Commits
 
-### Testing Coverage
+### Roadmap
 
-- Test framework configured
-- Project builds successfully
-- Ready for integration tests in next phases
-
-### What's Coming Next
-
-- **v0.2.0 (Phase B):** REST API endpoints + input validation + error handling
-- **v0.3.0 (Phase C):** PostgreSQL persistence + JPA integration tests
-- **v1.0.0 (Phase D):** JWT authentication + role-based access control
-- **v1.1.0 (Phase E):** Quotation calculation engine with volume discounts
-- **v1.2.0 (Phase F):** PDF generation + Docker containerization
-- **v1.3.0 (Phase G):** Code polishing + final refactoring
+- **v0.3.0 (Phase C):** Spring Security + JWT authentication + role-based access control
+- **v1.0.0 (Phase D):** Quotation calculation engine with volume discounts
+- **v1.1.0 (Phase E):** PDF generation
+- **v1.2.0 (Phase F):** Docker full containerization (app + DB) + deployment setup
+- **v1.3.0 (Phase G):** Code polishing, performance optimization, >60% coverage
 
 ---
 
@@ -477,12 +512,12 @@ This is a comprehensive 14-week project divided into 7 phases (2 weeks each). Ea
 
 | Phase | Duration | Feature Focus | Version | Status |
 |-------|----------|---------------|---------|--------|
-| **A** | 2 weeks | Maven setup, Domain entities, JPA mappings | v0.1.0 | ✅ CURRENT |
-| **B** | 2 weeks | REST API endpoints, input validation, error handling | v0.2.0 | ⏳ NEXT |
-| **C** | 2 weeks | PostgreSQL integration, JPA relationships, integration tests | v0.3.0 | ⏳ PLANNED |
-| **D** | 2 weeks | JWT authentication, role-based access, security hardening | v1.0.0 | ⏳ PLANNED |
-| **E** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.1.0 | ⏳ PLANNED |
-| **F** | 2 weeks | PDF generation, Docker containerization, deployment setup | v1.2.0 | ⏳ PLANNED |
+| **A** | 2 weeks | Maven setup, Domain entities, JPA mappings | v0.1.0 | ✅ DONE |
+| **B** | 2 weeks | REST API endpoints, input validation, error handling, Swagger | v0.2.0 | ✅ CURRENT |
+| **C** | 2 weeks | Spring Security + JWT authentication + role-based access | v0.3.0 | ⏳ NEXT |
+| **D** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.0.0 | ⏳ PLANNED |
+| **E** | 2 weeks | PDF generation | v1.1.0 | ⏳ PLANNED |
+| **F** | 2 weeks | Docker full containerization + deployment setup | v1.2.0 | ⏳ PLANNED |
 | **G** | 2 weeks | Code refactoring, final testing, performance optimization | v1.3.0 | ⏳ PLANNED |
 
 ### Phase A: Domain Layer (Current)
@@ -750,7 +785,7 @@ Backend Developer in Training | Java + Spring Boot Specialist
 
 ---
 
-**Last Updated:** May 26, 2026  
-**Current Phase:** A - Domain Layer  
-**Next Milestone:** v0.2.0 - REST API Implementation  
+**Last Updated:** May 27, 2026  
+**Current Phase:** B - REST API Complete  
+**Next Milestone:** v0.3.0 - Spring Security + JWT  
 **Repository:** [GitHub](https://github.com/borja8dev/agloval-quotation-api)
