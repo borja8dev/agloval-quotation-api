@@ -31,18 +31,29 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 
 **Important:** This is a professional portfolio project demonstrating a solution for Agloval. The API is fully functional but not yet integrated with Agloval's production systems. Frontend, database integration, and production deployment would follow if the concept is approved.
 
-**Current Version:** v0.2.0 (Phase B - REST API Complete) | [Releases](../../releases)
+**Current Version:** v0.3.0 (Phase C - Real Persistence + JPA Testing) | [Releases](../../releases)
 
 ---
 
 ## 📊 Current Status
 
-**Version:** v0.2.0  
-**Phase:** B - REST API Complete  
+**Version:** v0.3.0  
+**Phase:** C - Real Persistence + JPA Testing  
 **Status:** ✅ Complete and Stable  
 **Environment:** Development/Demo (Local)
 
-### Features in v0.2.0 (Current)
+### Features in v0.3.0 (Current)
+
+#### Persistence Layer
+- ✅ **PostgreSQL via Docker Compose** with `pg_isready` healthcheck
+- ✅ **`orphanRemoval = true`** on `Quotation.lines` — removing a line from the collection deletes it from the DB
+- ✅ **`@DataJpaTest` suite** — 17 new persistence integration tests (44 total, 0 failures)
+  - `UserJpaRepositoryTest` — save, findById, existsByEmail, findAll, deleteById (7 tests)
+  - `ProductJpaRepositoryTest` — save, findById, findAll, existsById, deleteById (5 tests)
+  - `QuotationJpaRepositoryTest` — save, findByUserId, cascade persist, orphanRemoval (6 tests)
+- ✅ Test config: H2 `MODE=PostgreSQL`, `ddl-auto: create-drop`, Flyway disabled
+
+### Features in v0.2.0
 
 #### Core Features
 - ✅ **15 REST endpoints** (CRUD for User, Product, Quotation)
@@ -88,7 +99,7 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 - Quotation line total calculation with discount factor
 
 #### Testing (v0.2.0)
-- 26 tests passing, 0 failures
+- 27 tests passing, 0 failures
 - `UserServiceTest`, `ProductServiceTest` — Mockito unit tests
 - `UserControllerTest`, `ProductControllerTest` — MockMvc integration tests
 - `application-test.yml` — H2 in-memory for test slice
@@ -104,11 +115,11 @@ Demonstration REST API showcasing automated quotation generation for Agloval SL 
 
 ### Roadmap
 
-- **v0.3.0 (Phase C):** Spring Security + JWT authentication + role-based access control
-- **v1.0.0 (Phase D):** Quotation calculation engine with volume discounts
-- **v1.1.0 (Phase E):** PDF generation
-- **v1.2.0 (Phase F):** Docker full containerization (app + DB) + deployment setup
-- **v1.3.0 (Phase G):** Code polishing, performance optimization, >60% coverage
+- **v0.4.0 (Phase D):** Spring Security + JWT authentication + role-based access control
+- **v1.0.0 (Phase E):** Quotation calculation engine with volume discounts
+- **v1.1.0 (Phase F):** PDF generation
+- **v1.2.0 (Phase G):** Docker full containerization (app + DB) + deployment setup
+- **v1.3.0 (Phase H):** Code polishing, performance optimization, >60% coverage
 
 ---
 
@@ -520,12 +531,13 @@ This is a comprehensive 14-week project divided into 7 phases (2 weeks each). Ea
 | Phase | Duration | Feature Focus | Version | Status |
 |-------|----------|---------------|---------|--------|
 | **A** | 2 weeks | Maven setup, Domain entities, JPA mappings | v0.1.0 | ✅ DONE |
-| **B** | 2 weeks | REST API endpoints, input validation, error handling, Swagger | v0.2.0 | ✅ CURRENT |
-| **C** | 2 weeks | Spring Security + JWT authentication + role-based access | v0.3.0 | ⏳ NEXT |
-| **D** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.0.0 | ⏳ PLANNED |
-| **E** | 2 weeks | PDF generation | v1.1.0 | ⏳ PLANNED |
-| **F** | 2 weeks | Docker full containerization + deployment setup | v1.2.0 | ⏳ PLANNED |
-| **G** | 2 weeks | Code refactoring, final testing, performance optimization | v1.3.0 | ⏳ PLANNED |
+| **B** | 2 weeks | REST API endpoints, input validation, error handling, Swagger | v0.2.0 | ✅ DONE |
+| **C** | 2 weeks | Real persistence (docker-compose, JPA testing, orphanRemoval) | v0.3.0 | ✅ CURRENT |
+| **D** | 2 weeks | Spring Security + JWT authentication + role-based access | v0.4.0 | ⏳ NEXT |
+| **E** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.0.0 | ⏳ PLANNED |
+| **F** | 2 weeks | PDF generation | v1.1.0 | ⏳ PLANNED |
+| **G** | 2 weeks | Docker full containerization + deployment setup | v1.2.0 | ⏳ PLANNED |
+| **H** | 2 weeks | Code refactoring, final testing, performance optimization | v1.3.0 | ⏳ PLANNED |
 
 ### Phase A: Domain Layer (Current)
 
@@ -792,7 +804,7 @@ Backend Developer in Training | Java + Spring Boot Specialist
 
 ---
 
-**Last Updated:** May 27, 2026  
-**Current Phase:** B - REST API Complete  
-**Next Milestone:** v0.3.0 - Spring Security + JWT  
+**Last Updated:** May 28, 2026  
+**Current Phase:** C - Real Persistence + JPA Testing  
+**Next Milestone:** v0.4.0 - Spring Security + JWT  
 **Repository:** [GitHub](https://github.com/borja8dev/agloval-quotation-api)
