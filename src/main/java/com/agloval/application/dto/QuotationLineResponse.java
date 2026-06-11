@@ -38,4 +38,7 @@ public class QuotationLineResponse {
 
     @Schema(description = "Optional notes for this line", example = "Cut to 60x60 cm")
     private String description;
+
+    @Schema(description = "Breakdown of applied discounts", example = "Volume 6% (48+ boards) + 16mm bonus 3% = 9%")
+    private String discountBreakdown;
 }

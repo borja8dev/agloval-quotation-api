@@ -1,847 +1,393 @@
-### Project Scope & Status
+# Agloval Quotation API
 
-**This is a demonstration MVP**, not a production system currently deployed at Agloval.
+Automated quotation system for Agloval SL. REST API with volume discounts, business validations, JWT authentication, and role-based access control.
 
-**What's Included (v0.1-v1.3):**
-- ✅ Fully functional REST API
-- ✅ JWT authentication + role-based access
-- ✅ Quotation calculation engine
-- ✅ PDF generation
-- ✅ Docker containerization
-- ✅ Professional testing (>60% coverage)
+**Current Version:** v1.1.0 (Phase E - Quotation Calculation Engine)
 
-**What's NOT Included Yet:**
-- ❌ Frontend/Web UI (planned as separate project)
-- ❌ Integration with Agloval's existing systems
-- ❌ Deployment on Agloval's production servers
-- ❌ Email notifications (could be added)
-
-**Next Steps (After v1.3):**
-If Agloval approves this approach, I would:
-1. Build a professional frontend (React/Vue)
-2. Integrate with their existing database
-3. Deploy on their production environment
-4. Add email notifications
-5. Train staff on the system
-   Cambio 3: En "Quick Start" aclarar que es local
-   Agregar:
-   markdown**Note:** This runs locally in development mode. Production deployment would require additional steps (database migration, server setup, etc).
-
-Demonstration REST API showcasing automated quotation generation for Agloval SL (MVP proof-of-concept).
-
-**Important:** This is a professional portfolio project demonstrating a solution for Agloval. The API is fully functional but not yet integrated with Agloval's production systems. Frontend, database integration, and production deployment would follow if the concept is approved.
-
-**Current Version:** v1.0.0 (Phase D - JWT Security + RBAC) | [Releases](../../releases)
+**Status:** Development/Demo (MVP)
 
 ---
 
-## 📊 Current Status
+## Table of Contents
 
-**Version:** v1.0.0  
-**Phase:** D - Spring Security + JWT + Role-Based Access Control  
-**Status:** ✅ Complete and Stable  
-**Environment:** Development/Demo (Local)
+1. [Project Scope](#project-scope)
+2. [Current Status](#current-status)
+3. [Tech Stack](#tech-stack)
+4. [Architecture](#architecture)
+5. [Quick Start](#quick-start)
+6. [API Endpoints](#api-endpoints)
+7. [Business Rules](#business-rules)
+8. [Testing](#testing)
+9. [Project Phases](#project-phases)
+10. [Development Guidelines](#development-guidelines)
 
-### Features in v1.0.0 (Current)
+---
 
-#### Security Layer
-- ✅ **JWT access tokens** — HS256, 15 min expiry, claims: `sub` (userId), `roles`, `iat`, `exp`, `jti`
-- ✅ **Refresh token rotation** — UUID-based, 7 days, stored in `jwt_refresh_tokens` table, revoked on use
-- ✅ **BCrypt password encoding** — strength 12
-- ✅ **Password policy** — min 8 chars, ≥1 uppercase, ≥1 digit, ≥1 special character
-- ✅ **Role-based access** — `ROLE_CLIENT` vs `ROLE_ADMIN` with endpoint-level matchers
-- ✅ **Rate limiting** — `/api/v1/auth/login`: max 5 attempts/IP in 15 min → 429 (Bucket4j)
-- ✅ **Stateless auth** — no sessions, JWT parsed on every request via `JwtAuthenticationFilter`
-- ✅ **Flyway V002** — adds `password`, `role`, `created_at` to `users`; creates `jwt_refresh_tokens`
+## Project Scope
 
-#### Auth Endpoints
-| Method | Endpoint | Auth | Description |
+This is a demonstration MVP, not a production system currently deployed at Agloval.
+
+**What's included (v0.1 - v1.1):**
+- Fully functional REST API with 15 endpoints
+- JWT authentication + role-based access control
+- Quotation calculation engine with volume discounts and business validations
+- PostgreSQL persistence with Flyway migrations
+- Professional testing suite (149 tests, 0 failures)
+
+**What's NOT included yet:**
+- Frontend/Web UI (planned as separate project)
+- PDF generation (Phase F)
+- Integration with Agloval's existing systems
+- Email notifications
+
+---
+
+## Current Status
+
+### v1.1.0 - Quotation Calculation Engine (Phase E)
+
+The calculation engine adds real business logic to quotation creation. All calculation services live in the domain layer as pure Java classes (no Spring dependencies), following hexagonal architecture principles.
+
+**Calculation Features:**
+- **Volume discounts for boards** -- 24+ boards = 3%, 48+ boards = 6% (applied across all TABLERO lines in a quotation)
+- **16mm thickness bonus** -- additional 3% discount for 16mm boards (stacks with volume)
+- **Regular customer bonus** -- additional 2% on all product lines (stacks with volume + thickness)
+- **Discount audit trail** -- each line includes a `discountBreakdown` field (e.g., "Volume 6% (48+ boards) + 16mm bonus 3% + Regular customer 2% = 11%")
+- **Dynamic validity period** -- summer/holiday: 30/60 days, rest of year: 45/90 days (non-regular/regular)
+- **Business validations** -- board thickness range (4-40mm), standard dimensions (244x122, 366x122, etc.)
+- **Quotation state machine** -- DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED, ARCHIVED with enforced transitions
+
+**New domain services (pure Java, no Spring):**
+- `PricingCalculator` -- resolves unit price per product type (per unit, per m2, per rate)
+- `DiscountCalculator` -- two-pass engine: counts total boards, then applies stacked discounts per line
+- `QuotationValidator` -- validates thickness, dimensions, quantities, and pricing
+- `QuotationStateMachine` -- enforces valid status transitions
+- `ValidityCalculator` -- resolves validity days by season and customer type
+
+**Tests added:** 73 new (149 total), including 15 integration tests with real persistence
+
+### v1.0.0 - JWT Security + RBAC (Phase D)
+
+- JWT access tokens (HS256, 15 min expiry) with refresh token rotation (7 days, stored in DB)
+- BCrypt password encoding (strength 12) with password policy enforcement
+- Role-based access: `ROLE_CLIENT` vs `ROLE_ADMIN` with endpoint-level authorization
+- Rate limiting on login: 5 attempts per IP in 15 minutes (Bucket4j)
+- Stateless authentication via `JwtAuthenticationFilter`
+
+### v0.3.0 - Persistence Layer (Phase C)
+
+- PostgreSQL via Docker Compose with healthcheck
+- `orphanRemoval = true` on `Quotation.lines`
+- `@DataJpaTest` suite (17 persistence tests against H2)
+
+### v0.2.0 - REST API (Phase B)
+
+- 15 REST endpoints (CRUD for User, Product, Quotation)
+- Input validation with `@Valid` and custom constraints
+- Centralized error handling with `GlobalExceptionHandler`
+- Swagger/OpenAPI documentation at `/swagger-ui.html`
+
+### v0.1.0 - Domain Layer (Phase A)
+
+- Maven project with Spring Boot 3.4
+- Domain entities with full JPA mappings and Flyway V001 migration
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Language | Java 21+ |
+| Framework | Spring Boot 3.4 |
+| Database | PostgreSQL 15 (production), H2 (testing) |
+| ORM | JPA/Hibernate 6.6 |
+| Authentication | JWT (JJWT 0.12.3) + BCrypt |
+| Rate Limiting | Bucket4j 8.10.1 |
+| Testing | JUnit5 + Mockito + AssertJ |
+| API Documentation | Swagger/OpenAPI 3.0 (springdoc 2.7) |
+| Database Migrations | Flyway |
+| Build Tool | Maven |
+| Containerization | Docker + Docker Compose |
+
+---
+
+## Architecture
+
+**Pattern:** Hexagonal (Ports and Adapters)
+
+Dependencies always point inward toward the domain layer. Domain services are pure Java with zero Spring dependencies.
+
+```
+INFRASTRUCTURE (Spring, JPA, REST)
+  |
+  v
+APPLICATION (Use Cases, DTOs, Ports)
+  |
+  v
+DOMAIN (Entities, Services, Exceptions -- no Spring)
+```
+
+### Project Structure
+
+```
+src/main/java/com/agloval/
+|
++-- domain/                              [Business Logic - no Spring]
+|   +-- entity/
+|   |   +-- User.java
+|   |   +-- Product.java
+|   |   +-- Quotation.java
+|   |   +-- QuotationLine.java
+|   |   +-- JwtRefreshToken.java
+|   +-- service/                         [Pure calculation engine]
+|   |   +-- PricingCalculator.java
+|   |   +-- DiscountCalculator.java
+|   |   +-- QuotationValidator.java
+|   |   +-- QuotationStateMachine.java
+|   |   +-- ValidityCalculator.java
+|   +-- enums/
+|   |   +-- QuotationStatus.java         [DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED, ARCHIVED]
+|   |   +-- ProductCategory.java         [TABLERO, SERVICIO, FERRETERIA, ...]
+|   |   +-- SaleUnit.java                [TABLERO, UNIDAD, MINUTO, METRO_LINEAL, ...]
+|   |   +-- RateType.java                [PER_MINUTE, PER_LINEAR_METER, FIXED]
+|   +-- exception/
+|       +-- QuotationValidationException.java
+|       +-- InvalidStatusTransitionException.java
+|       +-- InvalidProductDimensionsException.java
+|       +-- (+ 6 more domain exceptions)
+|
++-- application/                         [Use Cases and Orchestration]
+|   +-- service/
+|   |   +-- QuotationService.java        [Implements QuotationUseCase]
+|   |   +-- QuotationCalculationService.java  [Orchestrates domain services]
+|   |   +-- ProductService.java
+|   |   +-- UserService.java
+|   |   +-- AuthService.java
+|   +-- port/in/                         [Input ports - use case interfaces]
+|   +-- port/out/                        [Output ports - repository interfaces]
+|   +-- dto/                             [Request/Response objects]
+|
++-- infrastructure/                      [Spring adapters]
+    +-- input/rest/                       [REST controllers]
+    +-- output/persistence/              [JPA repository implementations]
+    +-- security/                        [JWT, filters, Spring Security config]
+    +-- config/                          [GlobalExceptionHandler, CORS, etc.]
+```
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Java 21+ (`java -version`)
+- Maven 3.8+ (`mvn -version`)
+- Docker (`docker --version`) -- for PostgreSQL
+
+### Run
+
+```bash
+# 1. Start PostgreSQL
+docker-compose up -d
+
+# 2. Build and test
+mvn clean install
+
+# 3. Start the application
+mvn spring-boot:run
+```
+
+The API runs at `http://localhost:8080`. Swagger UI at `http://localhost:8080/swagger-ui.html`.
+
+### Run Tests Only
+
+```bash
+mvn test
+# 149 tests, 0 failures
+```
+
+Tests use H2 in-memory (no Docker needed).
+
+---
+
+## API Endpoints
+
+### Authentication (Public)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Register user, returns tokens |
+| POST | `/api/v1/auth/login` | Login, returns access + refresh tokens |
+| POST | `/api/v1/auth/refresh` | Rotate refresh token |
+| POST | `/api/v1/auth/logout` | Revoke refresh tokens |
+
+### Quotations (Authenticated)
+
+| Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| POST | `/api/v1/auth/login` | Public | Returns `accessToken` + `refreshToken` |
-| POST | `/api/v1/auth/register` | Public | Creates user with `ROLE_CLIENT`, returns tokens |
-| POST | `/api/v1/auth/refresh` | Public | Rotates refresh token, returns new pair |
-| POST | `/api/v1/auth/logout` | — | Revokes refresh token for user |
+| POST | `/api/v1/quotations` | Any | Create quotation (calculates discounts automatically) |
+| GET | `/api/v1/quotations` | Any | List quotations |
+| GET | `/api/v1/quotations/{id}` | Any | Get quotation by ID |
+| PATCH | `/api/v1/quotations/{id}/status` | Any | Update status (state machine enforced) |
+| GET | `/api/v1/quotations/user/{userId}` | Any | Get quotations by user |
+| DELETE | `/api/v1/quotations/{id}` | ADMIN | Delete quotation |
 
-#### Endpoint Protection
-| Pattern | Required Role |
-|---------|--------------|
-| `GET /api/v1/products/**` | Any authenticated |
-| `POST/PUT/DELETE /api/v1/products/**` | `ROLE_ADMIN` |
-| `DELETE /api/v1/quotations/**` | `ROLE_ADMIN` |
-| `/api/v1/quotations/**` | Any authenticated |
-| `/api/v1/users/**` | `ROLE_ADMIN` |
-| `/api/v1/auth/**`, Swagger | Public |
+### Products (Authenticated)
 
-#### Security Tests (32 new, 76 total, 0 failures)
-- `JwtTokenProviderTest` — 7 unit tests (valid, expired, tampered, wrong secret, claims extraction)
-- `PasswordValidatorTest` — 6 unit tests (all rules, null)
-- `AuthControllerTest` — 6 MockMvc tests (login/logout/refresh happy + error paths)
-- `SecurityConfigTest` — 4 integration tests (401 unauthenticated, 403 wrong role, 200 correct role, public endpoints)
-- `SecurityIntegrationTest` — 5 end-to-end tests (valid token, tampered 401, rate limit 429, swagger public)
-- `JwtRefreshTokenJpaRepositoryTest` — 4 persistence tests
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/api/v1/products` | Any | List products |
+| GET | `/api/v1/products/{id}` | Any | Get product by ID |
+| POST | `/api/v1/products` | ADMIN | Create product |
+| PUT | `/api/v1/products/{id}` | ADMIN | Update product |
+| DELETE | `/api/v1/products/{id}` | ADMIN | Delete product |
 
-### Features in v0.3.0
-
-#### Persistence Layer
-- ✅ **PostgreSQL via Docker Compose** with `pg_isready` healthcheck
-- ✅ **`orphanRemoval = true`** on `Quotation.lines` — removing a line from the collection deletes it from the DB
-- ✅ **`@DataJpaTest` suite** — 17 persistence integration tests
-  - `UserJpaRepositoryTest` — save, findById, existsByEmail, findAll, deleteById (7 tests)
-  - `ProductJpaRepositoryTest` — save, findById, findAll, existsById, deleteById (5 tests)
-  - `QuotationJpaRepositoryTest` — save, findByUserId, cascade persist, orphanRemoval (6 tests)
-- ✅ Test config: H2 `MODE=PostgreSQL`, `ddl-auto: create-drop`, Flyway disabled
-
-### Features in v0.2.0
-
-#### Core Features
-- ✅ **15 REST endpoints** (CRUD for User, Product, Quotation)
-- ✅ **Input validation** with `@Valid` + custom constraints
-- ✅ **Centralized error handling** with `GlobalExceptionHandler`
-- ✅ **Correct HTTP status codes** (201 Created, 204 No Content, 400 Bad Request, 404 Not Found, 409 Conflict, 500 Server Error)
-- ✅ **Professional error responses** with status + message + timestamp + validation errors list
-- ✅ **Swagger/OpenAPI documentation** at `/swagger-ui.html` — fully annotated with descriptions, examples, and all response codes
-- ✅ **MockMvc tests** for controllers + Mockito unit tests for services (~52% coverage)
-
-#### Endpoints Implemented
+### Users (ADMIN only)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/users` | Create user |
-| GET | `/api/v1/users` | List all users |
-| GET | `/api/v1/users/{id}` | Get user by ID |
+| GET | `/api/v1/users` | List users |
+| GET | `/api/v1/users/{id}` | Get user |
 | PUT | `/api/v1/users/{id}` | Update user |
 | DELETE | `/api/v1/users/{id}` | Delete user |
-| POST | `/api/v1/products` | Create product |
-| GET | `/api/v1/products` | List all products |
-| GET | `/api/v1/products/{id}` | Get product by ID |
-| PUT | `/api/v1/products/{id}` | Update product |
-| DELETE | `/api/v1/products/{id}` | Delete product |
-| POST | `/api/v1/quotations` | Create quotation with lines |
-| GET | `/api/v1/quotations` | List all quotations |
-| GET | `/api/v1/quotations/{id}` | Get quotation by ID |
-| PATCH | `/api/v1/quotations/{id}/status` | Update quotation status |
-| GET | `/api/v1/quotations/user/{userId}` | Get quotations by user |
-
-#### API Documentation (Swagger)
-- `@Schema` with descriptions and examples on all DTOs
-- `@ApiResponses` documenting every possible status code per endpoint
-- `@Parameter` on all path/query variables
-- OpenAPI info: title, version, markdown description, contact, MIT license, server URL
-- Status code table and architecture overview visible directly in Swagger UI
-
-#### Code Quality
-- Hexagonal Architecture (domain → application → infrastructure)
-- Clean Code principles (methods <30 lines, single responsibility)
-- SOLID principles respected
-- Manual DTO ↔ entity mapping (no MapStruct dependency)
-- Quotation line total calculation with discount factor
-
-#### Testing (v0.2.0)
-- 27 tests passing, 0 failures
-- `UserServiceTest`, `ProductServiceTest` — Mockito unit tests
-- `UserControllerTest`, `ProductControllerTest` — MockMvc integration tests
-- `application-test.yml` — H2 in-memory for test slice
-
-### Features in v0.1.0
-
-- ✅ Maven project scaffold with Spring Boot 3.4
-- ✅ Domain entities (User, Product, Quotation, QuotationLine) with full JPA mappings
-- ✅ OneToMany / ManyToOne relationships with LAZY loading
-- ✅ Flyway migration `V001__create_initial_schema.sql`
-- ✅ CLAUDE.md development guidelines
-- ✅ Git initialized with Conventional Commits
-
-### Roadmap
-
-- **v1.1.0 (Phase E):** Quotation calculation engine with volume discounts
-- **v1.2.0 (Phase F):** PDF generation
-- **v1.3.0 (Phase G):** Docker full containerization (app + DB) + deployment setup
-- **v1.4.0 (Phase H):** Code polishing, performance optimization, >60% coverage
 
 ---
 
-## 🎯 Project Scope & Status
+## Business Rules
 
-### What This MVP Demonstrates
+### Volume Discounts (TABLERO products only)
 
-This project showcases a complete backend solution for automating Agloval's quotation process:
+Discounts are calculated based on the **total board count across the entire quotation**, not per line.
 
-- **Fully functional REST API** with professional architecture (Hexagonal pattern)
-- **JWT authentication** with role-based access control
-- **Complex business logic** (quotation calculations, volume discounts, service pricing)
-- **PDF generation** for professional quotations
-- **Docker containerization** for easy deployment
-- **Professional testing** (>60% coverage by v1.3.0)
-- **Production-grade code quality** following SOLID principles and Clean Code
+| Total boards | Discount |
+|---|---|
+| < 24 | 0% |
+| 24 - 47 | 3% |
+| 48+ | 6% |
 
-### What's NOT Included Yet
+### Stacking Discounts
 
-- ❌ **Frontend/Web UI** - Would be built as a separate React/Vue project
-- ❌ **Integration with Agloval's existing systems** - Current implementation uses demo data
-- ❌ **Deployment on Agloval's production servers** - Runs locally in development
-- ❌ **Email notifications** - Could be added in future phases
-- ❌ **Payment processing** - Not in scope for MVP
+Discounts stack additively:
 
-### If Agloval Approves This Approach
+| Condition | Discount |
+|---|---|
+| Volume tier (see above) | 0-6% |
+| 16mm board thickness | +3% |
+| Regular customer (`is_regular = true`) | +2% on all products |
 
-The next steps would be:
+**Example:** Regular customer buys 48 boards of 16mm thickness:
+6% (volume) + 3% (16mm) + 2% (regular) = **11% total discount**
 
-1. **Build Professional Frontend**
-   - React or Vue application
-   - User dashboard, quotation management UI
-   - Real-time calculations and preview
-   - PDF download functionality
+### Quotation State Machine
 
-2. **Integrate with Agloval's Existing Systems**
-   - Migrate data from current database
-   - Sync with ERP/inventory systems
-   - Historical quotation import
+```
+DRAFT --> SENT --> ACCEPTED --> ARCHIVED
+                |
+                +--> REJECTED
 
-3. **Production Deployment**
-   - Setup on Agloval's production servers
-   - Configure PostgreSQL on production
-   - SSL/TLS certificates
-   - Backup and disaster recovery
-
-4. **Staff Training**
-   - User documentation
-   - Admin training
-   - Support procedures
-
-5. **Ongoing Maintenance**
-   - Bug fixes and improvements
-   - Performance monitoring
-   - Feature enhancements
-
-### Current Environment
-
-**This MVP runs locally in development mode:**
-- Local PostgreSQL (via Docker Compose)
-- Development credentials
-- Demo data for testing
-- H2 in-memory database for testing
-
-**Note:** Production deployment would require additional infrastructure setup, security hardening, and data migration.
-
----
-
-## 🎯 Problem & Solution
-
-### Current State (Manual Process)
-
-Agloval currently handles quotations manually:
-- Manual quotation calculation → 2 days of work per batch
-- No centralized history or traceability
-- Occasional calculation errors
-- No digital archive system
-- 200-300 quotations per month → slow, error-prone
-
-### Proposed Solution (This API)
-
-Automated quotation system providing:
-1. Professional clients access portal
-2. Select products + additional services (cutting, edging)
-3. API automatically calculates prices (m², discounts, services)
-4. Real-time quotation preview
-5. Generate professional PDF
-6. Save as draft, share, collect feedback
-7. Centralized quotation history with searchable archive
-8. Full audit trail of all quotations
-
----
-
-## 📋 Table of Contents
-
-1. [Tech Stack](#tech-stack)
-2. [Architecture](#architecture)
-3. [Quick Start](#quick-start)
-4. [Project Phases](#project-phases)
-5. [Development Guidelines](#development-guidelines)
-6. [Testing](#testing)
-7. [Documentation](#documentation)
-8. [Contributing](#contributing)
-
----
-
-## 🛠️ Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| **Language** | Java 21+ |
-| **Framework** | Spring Boot 3.4 |
-| **Database** | PostgreSQL 15+ (production), H2 (testing) |
-| **ORM** | JPA/Hibernate |
-| **Authentication** | JWT + BCrypt |
-| **Testing** | JUnit5 + Mockito |
-| **API Documentation** | Swagger/OpenAPI 3.0 |
-| **PDF Generation** | iText 7 |
-| **Database Migrations** | Flyway |
-| **Build Tool** | Maven |
-| **Containerization** | Docker + Docker Compose |
-| **Version Control** | Git + GitHub |
-
----
-
-## 🏗️ Architecture
-
-**Pattern:** Hexagonal (Ports & Adapters)
-
-### Design Philosophy
-
-The application is structured in three independent layers with clear separation of concerns. Dependencies always point inward toward the domain layer.
-┌─────────────────────────────────────────────────────────────┐
-│ INFRASTRUCTURE LAYER (Spring, JPA, External Tech)           │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ - REST Controllers (@RestController)                    │ │
-│ │ - JPA Repositories (Spring Data JPA)                    │ │
-│ │ - Spring Configuration (@Configuration, @Bean)         │ │
-│ │ - External Adapters (PDF generation, Email, etc)       │ │
-│ └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-↓ depends on
-┌─────────────────────────────────────────────────────────────┐
-│ APPLICATION LAYER (Use Cases, Ports, DTOs)                  │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ - Application Services (orchestrate use cases)          │ │
-│ │ - Input Ports (interfaces defining entry points)        │ │
-│ │ - Output Ports (interfaces for external systems)        │ │
-│ │ - DTOs (Request/Response objects)                       │ │
-│ │ - Mappers (Entity ↔ DTO conversion)                     │ │
-│ └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-↓ depends on
-┌─────────────────────────────────────────────────────────────┐
-│ DOMAIN LAYER (Business Logic - ZERO Spring Dependencies)    │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ - Entities (@Entity for JPA, but domain-focused)        │ │
-│ │ - Domain Services (pure business logic, no @Service)    │ │
-│ │ - Value Objects (Money, Dimensions, QuotationStatus)    │ │
-│ │ - Custom Exceptions (domain-specific)                   │ │
-│ │ - Business Rules (validation logic)                     │ │
-│ └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-
-### Why Hexagonal Architecture?
-
-- **Decoupled:** Change database from PostgreSQL to MongoDB = modify 1 adapter file
-- **Testable:** Test business logic without initializing Spring (10x faster tests)
-- **Scalable:** Grows from MVP to enterprise without refactoring
-- **Professional:** Industry standard in tier-1 companies (Aubay, Sopra Steria, NTT Data)
-- **Maintainable:** Clear boundaries = easy to understand and modify
-
-### Project Structure
-agloval-quotation-api/
-│
-├── src/main/java/com/agloval/
-│
-│   ├── domain/                              [CORE - Business Logic]
-│   │   ├── entity/
-│   │   │   ├── User.java
-│   │   │   ├── Product.java
-│   │   │   ├── Category.java
-│   │   │   ├── Quotation.java
-│   │   │   └── QuotationLine.java
-│   │   │
-│   │   ├── service/
-│   │   │   ├── PricingCalculator.java       [Pure business logic]
-│   │   │   ├── DiscountCalculator.java
-│   │   │   └── ValidationService.java
-│   │   │
-│   │   ├── exception/
-│   │   │   ├── QuotationNotFoundException.java
-│   │   │   ├── InvalidMeasurementsException.java
-│   │   │   └── InsufficientStockException.java
-│   │   │
-│   │   └── value/
-│   │       ├── Money.java
-│   │       ├── Dimensions.java
-│   │       └── QuotationStatus.java
-│   │
-│   ├── application/                         [USE CASES]
-│   │   ├── service/
-│   │   │   ├── CreateQuotationService.java
-│   │   │   ├── CalculateQuotationService.java
-│   │   │   └── UpdateQuotationService.java
-│   │   │
-│   │   ├── port/
-│   │   │   ├── in/
-│   │   │   │   ├── CreateQuotationUseCase.java
-│   │   │   │   ├── GetQuotationUseCase.java
-│   │   │   │   └── CalculateQuotationUseCase.java
-│   │   │   │
-│   │   │   └── out/
-│   │   │       ├── QuotationPersistencePort.java
-│   │   │       ├── UserPersistencePort.java
-│   │   │       ├── ProductPersistencePort.java
-│   │   │       ├── PdfGenerationPort.java
-│   │   │       └── NotificationPort.java
-│   │   │
-│   │   ├── dto/
-│   │   │   ├── CreateQuotationRequest.java
-│   │   │   ├── QuotationResponse.java
-│   │   │   ├── QuotationLineDTO.java
-│   │   │   └── ProductDTO.java
-│   │   │
-│   │   └── mapper/
-│   │       ├── QuotationMapper.java
-│   │       └── ProductMapper.java
-│   │
-│   └── infrastructure/                      [ADAPTERS]
-│       ├── config/
-│       │   ├── SecurityConfig.java
-│       │   ├── JpaConfig.java
-│       │   ├── MvcConfig.java
-│       │   └── BeanConfiguration.java
-│       │
-│       ├── input/
-│       │   └── rest/
-│       │       ├── QuotationController.java
-│       │       ├── ProductController.java
-│       │       ├── UserController.java
-│       │       └── GlobalExceptionHandler.java
-│       │
-│       ├── output/
-│       │   ├── persistence/
-│       │   │   ├── QuotationJpaRepository.java
-│       │   │   ├── QuotationRepositoryAdapter.java
-│       │   │   ├── UserRepositoryAdapter.java
-│       │   │   └── ProductRepositoryAdapter.java
-│       │   │
-│       │   ├── pdf/
-│       │   │   ├── ITextPdfGenerator.java
-│       │   │   └── PdfGenerationAdapter.java
-│       │   │
-│       │   └── notification/
-│       │       └── EmailNotificationAdapter.java
-│       │
-│       └── security/
-│           ├── JwtTokenProvider.java
-│           ├── JwtAuthenticationFilter.java
-│           └── UserDetailsServiceImpl.java
-│
-├── src/main/resources/
-│   ├── application.yml
-│   ├── application-dev.yml
-│   ├── application-prod.yml
-│   ├── db/migration/                        [Flyway migrations]
-│   │   └── V001__init_schema.sql
-│   └── logback-spring.xml
-│
-├── src/test/java/com/agloval/
-│   ├── domain/service/                      [Domain logic tests - no DB]
-│   ├── application/service/                 [Service tests - with mocks]
-│   └── infrastructure/
-│       ├── rest/                            [Controller tests - MockMvc]
-│       └── persistence/                     [JPA tests - @DataJpaTest]
-│
-├── docker-compose.yml
-├── Dockerfile
-├── pom.xml
-├── .gitignore
-├── .claudeignore
-├── CLAUDE.md
-├── README.md                                [You are here]
-└── LICENSE
-
-### Key Architecture Principles
-
-1. **Dependency Inversion:** High-level modules (domain) don't depend on low-level modules (infrastructure). Both depend on abstractions (ports).
-
-2. **Single Responsibility:** Each class has one reason to change.
-
-3. **Open/Closed:** Open for extension (new discount types), closed for modification (existing logic unchanged).
-
-4. **Clear Boundaries:** Controllers never import domain directly. Services implement ports. Repositories implement output ports.
-
-5. **Testing Strategy:**
-   - Domain services: Fast, no Spring, pure logic
-   - Application services: Fast, mocked repositories
-   - Controllers: Medium speed, MockMvc
-   - Integration: Full stack, real database, slowest but most realistic
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-Verify you have the required tools installed:
-
-```bash
-# Check Java version (21 or higher)
-java -version
-# Should output: openjdk version "21" or higher
-
-# Check Maven version (3.8 or higher)
-mvn -version
-
-# Docker (optional but recommended for database)
-docker --version
-
-# Git
-git --version
+Any state --> EXPIRED
 ```
 
-If any are missing, install via Homebrew (macOS):
+Invalid transitions (e.g., DRAFT directly to ACCEPTED) return HTTP 409 Conflict.
 
-```bash
-brew install java maven docker git
-```
+### Dynamic Validity Period
 
-### Setup Local Environment
+| Season | Non-regular | Regular |
+|---|---|---|
+| June - August (summer) | 30 days | 60 days |
+| December (holiday) | 30 days | 60 days |
+| Rest of year | 45 days | 90 days |
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/[your-github-username]/agloval-quotation-api
-cd agloval-quotation-api
+### Product Validations
 
-# 2. Build the project
-mvn clean install
-# Downloads dependencies and runs tests
-# Should end with: BUILD SUCCESS
-
-# 3. Run tests (verify everything works)
-mvn test
-
-# 4. View dependencies
-mvn dependency:tree
-```
-
-### Running the Application (Development Mode)
-
-From Phase B onwards:
-
-```bash
-# Option 1: Maven
-mvn spring-boot:run
-
-# Option 2: IDE (IntelliJ)
-# Right-click AglovalApplication.java → Run
-
-# Option 3: Docker (starts app + PostgreSQL)
-docker-compose up
-```
-
-Once running, the API is available at: `http://localhost:8080`
-
-Swagger UI: `http://localhost:8080/swagger-ui.html` (from v0.2.0+)
-
-**Note:** This runs locally in development mode with demo data. Production deployment would require:
-- PostgreSQL configured on production server
-- Environment variables for security credentials
-- SSL/TLS certificates
-- Database backup procedures
-- Load balancing and monitoring setup
-
-### Running Tests
-
-```bash
-# All tests
-mvn test
-
-# Specific test class
-mvn test -Dtest=QuotationServiceTest
-
-# Specific test method
-mvn test -Dtest=QuotationServiceTest#shouldCalculateTotal
-
-# With coverage report
-mvn test jacoco:report
-# View at: target/site/jacoco/index.html
-```
-
-### Building for Production
-
-```bash
-mvn clean package -Pprod
-
-# Run the JAR
-java -jar target/agloval-quotation-api-1.0.0.jar
-```
+- Board thickness: 4 - 40mm
+- Standard board dimensions: 244x122, 366x122, 305x122, 280x122, 260x122 cm
+- At least one price must be set on the product (pricePerUnit, pricePerM2, or pricePerRateUnit)
+- Line quantity must be positive
 
 ---
 
-## 📊 Project Phases
+## Testing
 
-This is a comprehensive 14-week project divided into 7 phases (2 weeks each). Each phase culminates in a stable, versioned release.
+**149 tests, 0 failures.**
 
-| Phase | Duration | Feature Focus | Version | Status |
-|-------|----------|---------------|---------|--------|
-| **A** | 2 weeks | Maven setup, Domain entities, JPA mappings | v0.1.0 | ✅ DONE |
-| **B** | 2 weeks | REST API endpoints, input validation, error handling, Swagger | v0.2.0 | ✅ DONE |
-| **C** | 2 weeks | Real persistence (docker-compose, JPA testing, orphanRemoval) | v0.3.0 | ✅ DONE |
-| **D** | 2 weeks | Spring Security + JWT + BCrypt + RBAC + rate limiting | v1.0.0 | ✅ CURRENT |
-| **E** | 2 weeks | Quotation calculation engine, volume discounts, pricing logic | v1.1.0 | ⏳ NEXT |
-| **F** | 2 weeks | PDF generation | v1.2.0 | ⏳ PLANNED |
-| **G** | 2 weeks | Docker full containerization + deployment setup | v1.3.0 | ⏳ PLANNED |
-| **H** | 2 weeks | Code refactoring, final testing, performance optimization | v1.4.0 | ⏳ PLANNED |
+| Layer | Tests | Framework | Speed |
+|---|---|---|---|
+| Domain services | 43 | JUnit5 + AssertJ | < 0.01s |
+| Application services | 21 | JUnit5 + Mockito | < 0.5s |
+| Controllers | 19 | MockMvc | < 0.3s |
+| Security | 22 | SpringBootTest + MockMvc | ~1.5s |
+| Persistence | 22 | @DataJpaTest + H2 | ~0.5s |
+| Integration (Phase E) | 15 | SpringBootTest + H2 | ~0.4s |
+| JWT provider | 7 | JUnit5 (no Spring) | < 0.01s |
 
-### Phase A: Domain Layer (Current)
+Test naming convention: `methodName_WhenCondition_ThenExpectedBehavior`
 
-**What was built:**
-- Maven project structure with Spring Boot 3.4
-- 5 domain entities with proper JPA mappings
-- OneToMany and ManyToOne relationships
-- Flyway migration framework setup
-- Development guidelines (CLAUDE.md)
-- Test framework initialization
+### Test Configuration
 
-**Key learning outcomes:**
-- Spring Boot project setup
-- JPA entity design
-- Entity relationships (@OneToMany, @ManyToOne)
-- Maven dependency management
-
-**Next phase deliverables:**
-- Functional REST endpoints for CRUD operations
-- Input validation with Bean Validation
-- Professional error handling with GlobalExceptionHandler
-- API documentation with Swagger
+Tests use H2 in-memory database with `MODE=PostgreSQL`, `ddl-auto: create-drop`, and Flyway disabled. No Docker required for testing.
 
 ---
 
-## 👨‍💻 Development Guidelines
+## Project Phases
 
-### Code Style & Conventions
-
-**Language:** English for all code (classes, methods, variables, comments)
-
-**Naming Conventions:**
-- Classes: PascalCase (User, ProductController, QuotationService)
-- Methods/Variables: camelCase (getUserId, createQuotation, totalPrice)
-- Constants: UPPERCASE_WITH_UNDERSCORES (MAX_QUANTITY, DEFAULT_CURRENCY)
-- Package names: lowercase.dot.separated (com.agloval.domain.service)
-
-**Method Length:** Maximum 30 lines (sign of too much responsibility)
-
-**Class Responsibility:** Each class should have one reason to change (Single Responsibility Principle)
-
-**Imports:** Explicit imports only (never import *)
-
-### Commit Convention
-
-Uses **[Conventional Commits](https://www.conventionalcommits.org/)** for clear, semantic commit history.
-
-**Format:**
-<type>(scope): <description>
-[optional body explaining WHY and HOW, not WHAT]
-[optional footer for breaking changes]
-
-**Types:**
-- `feat:` New feature
-- `fix:` Bug fix
-- `refactor:` Code restructuring (no behavior change)
-- `test:` Adding or updating tests
-- `docs:` Documentation changes
-- `perf:` Performance improvements
-- `chore:` Maintenance tasks (dependencies, build)
-
-**Scopes (for this project):**
-- `(setup)` - Project initialization, Maven config
-- `(domain)` - Domain entities, business logic
-- `(persistence)` - JPA, repositories, migrations
-- `(rest)` - REST controllers, HTTP endpoints
-- `(validation)` - Input validation, exceptions
-- `(auth)` - JWT, security
-- `(pdf)` - PDF generation
-- `(testing)` - Test infrastructure
-- `(docs)` - Documentation
-- `(ci)` - CI/CD setup
-
-**Example Commits:**
-
-```bash
-# Good
-git commit -m "feat(domain): add quotation entity with jpa mappings
-
-- Create Quotation entity with @OneToMany relationship to QuotationLine
-- Add QuotationStatus enum (DRAFT, SENT, ACCEPTED, REJECTED)
-- Add validation constraints (@NotNull, @NotBlank, @Positive)
-- Include createdAt, updatedAt for audit trail"
-
-# Also Good
-git commit -m "fix(persistence): fix n+1 query problem in quotation list
-
-- Replace @OneToMany(fetch=EAGER) with LAZY + @EntityGraph
-- Add custom query with LEFT JOIN FETCH
-- Reduces 100 queries to 1 for list operation"
-
-# Also Good
-git commit -m "docs(readme): update current status for v0.1.0"
-
-# Bad - Too vague
-git commit -m "fix: update code"
-
-# Bad - Too detailed in message
-git commit -m "feat: add line 1 to class A, line 2 to class B, line 3..."
-```
-
-### Code Review Checklist
-
-Before committing, verify:
-
-- [ ] Code compiles without warnings
-- [ ] All tests pass
-- [ ] No Spring imports in domain/ package
-- [ ] Method names clearly describe what they do
-- [ ] No methods longer than 30 lines
-- [ ] Comments explain WHY, not WHAT
-- [ ] No hardcoded values (use constants or configuration)
-- [ ] Exception handling is explicit
-- [ ] DTOs properly map to entities
-- [ ] No SQL queries (use JPA)
+| Phase | Version | Focus | Status |
+|---|---|---|---|
+| A | v0.1.0 | Domain entities, JPA, Flyway | Complete |
+| B | v0.2.0 | REST API, validation, Swagger | Complete |
+| C | v0.3.0 | PostgreSQL, Docker, persistence tests | Complete |
+| D | v1.0.0 | JWT security, RBAC, rate limiting | Complete |
+| **E** | **v1.1.0** | **Calculation engine, discounts, state machine** | **Current** |
+| F | v1.2.0 | PDF generation | Next |
+| G | v1.3.0 | Docker full containerization | Planned |
+| H | v1.4.0 | Code polishing, performance, >60% coverage | Planned |
 
 ---
 
-## 🧪 Testing
+## Development Guidelines
 
-### Testing Philosophy
+### Code Style
 
-- **Fast:** Domain tests run without Spring (10x faster)
-- **Isolated:** Each test is independent, no shared state
-- **Clear:** Test names describe what is being tested and expected result
-- **Comprehensive:** Cover happy paths, edge cases, and error scenarios
+- **Language:** English for all code
+- **Naming:** PascalCase (classes), camelCase (methods/variables), UPPERCASE (constants)
+- **Methods:** < 30 lines, single responsibility
+- **Architecture:** Domain layer has zero Spring imports
+- **Money:** BigDecimal with RoundingMode.HALF_UP, scale 2
 
-### Test Structure
-src/test/java/com/agloval/
-├── domain/service/
-│   ├── PricingCalculatorTest.java           [Unit tests - pure logic]
-│   └── ValidationServiceTest.java
-│
-├── application/service/
-│   ├── CreateQuotationServiceTest.java      [Service tests - with mocks]
-│   └── CalculateQuotationServiceTest.java
-│
-└── infrastructure/
-├── rest/
-│   ├── QuotationControllerTest.java     [Controller tests - MockMvc]
-│   └── ProductControllerTest.java
-│
-└── persistence/
-├── QuotationRepositoryTest.java     [JPA tests - @DataJpaTest]
-└── UserRepositoryTest.java
+### Commits
 
-### Test Naming Convention
-test[MethodName]_When[Condition]_Then[ExpectedBehavior]
-Examples:
+Conventional Commits: `feat(scope): description`
 
-testCalculateTotal_WhenValidQuotation_ThenReturnCorrectTotal
-testCreateUser_WhenEmailAlreadyExists_ThenThrowDuplicateException
-testGetQuotations_WhenNoResults_ThenReturnEmptyList
+Scopes: `auth`, `quotation`, `persistence`, `validation`, `pdf`, `docs`, `testing`
 
+### Key Files
 
-### Running Tests
-
-```bash
-# All tests
-mvn test
-
-# Specific test class
-mvn test -Dtest=QuotationServiceTest
-
-# Specific test method
-mvn test -Dtest=QuotationServiceTest#testCalculateTotal_WhenValidQuotation_ThenReturnCorrectTotal
-
-# With coverage
-mvn test jacoco:report
-
-# View coverage report
-open target/site/jacoco/index.html
-```
-
-### Current Testing Status
-
-**Phase A Coverage:**
-- Project structure validates
-- Build succeeds
-- Framework initialized
-
-**Phase B & Beyond:**
-- Unit tests for all domain services
-- Integration tests for controllers
-- Repository tests with @DataJpaTest
-- Target: >60% overall coverage
+- `CLAUDE.md` -- development guidelines, security spec, known gotchas
+- `pom.xml` -- dependencies and build config
+- `application.yml` -- main configuration
+- `db/migration/V001-V003` -- schema evolution
+- `docker-compose.yml` -- PostgreSQL 15
 
 ---
 
-## 📚 Documentation
+## Author
 
-### Available Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Complete development guide, patterns, common commands, architecture details
-- **[BUSINESS_RULES.md](docs/BUSINESS_RULES.md)** - Business requirements from Agloval, pricing models, validation rules
-- **API Documentation** - Swagger/OpenAPI (available from v0.2.0+)
-- **This README** - Project overview and quick reference
-
-### Documentation Standards
-
-- Every public method has JavaDoc
-- Complex logic has inline comments explaining WHY
-- Architecture decisions are documented in CLAUDE.md
-- Business rules are documented in BUSINESS_RULES.md
-
-### JavaDoc Example
-
-```java
-/**
- * Calculates the total quotation price including discounts and services.
- *
- * @param quotation the quotation to calculate total for
- * @return the final price as BigDecimal
- * @throws InvalidMeasurementsException if quotation has invalid dimensions
- * @throws QuotationNotFoundException if quotation line references missing product
- */
-public BigDecimal calculateTotal(Quotation quotation) {
-    // implementation
-}
-```
+**Borja Rodriguez**
+Backend Developer | Java + Spring Boot
+Valencia, Spain
+[GitHub](https://github.com/borja8dev)
 
 ---
 
-## 🤝 Contributing
+## License
 
-This is a professional portfolio project. Contributions welcome via GitHub issues and pull requests.
-
-**Process:**
-1. Create an issue describing the improvement
-2. Discuss the approach
-3. Create a feature branch
-4. Commit changes with Conventional Commits
-5. Submit pull request with clear description
+MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-## 📝 License
-
-MIT License - See [LICENSE](LICENSE) for details
-
----
-
-## 👤 Author
-
-**Borja Rodríguez**  
-Backend Developer in Training | Java + Spring Boot Specialist  
-📍 Valencia, Spain  
-🔗 [GitHub](https://github.com/borja8dev)
-
-*Building professional APIs with Hexagonal Architecture and best practices*
-
----
-
-## 🔗 Quick Navigation
-
-- [Current Status](#current-status) - What's included in current version
-- [Project Scope](#project-scope--status) - Demo vs Production clarity
-- [Tech Stack](#tech-stack) - Technologies used
-- [Architecture](#architecture) - System design explanation
-- [Quick Start](#quick-start) - How to run locally
-- [Project Phases](#project-phases) - Development roadmap
-- [Development Guidelines](#development-guidelines) - Code standards
-- [Testing](#testing) - Testing approach and status
-
----
-
-**Last Updated:** May 28, 2026  
-**Current Phase:** D - Spring Security + JWT + RBAC  
-**Next Milestone:** v1.1.0 - Quotation Calculation Engine  
+**Last Updated:** June 12, 2026
+**Current Version:** v1.1.0 - Quotation Calculation Engine
+**Next Milestone:** v1.2.0 - PDF Generation
 **Repository:** [GitHub](https://github.com/borja8dev/agloval-quotation-api)

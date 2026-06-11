@@ -3,10 +3,13 @@ package com.agloval.infrastructure.config;
 import com.agloval.application.dto.ErrorResponse;
 import com.agloval.domain.exception.DuplicateEmailException;
 import com.agloval.domain.exception.InvalidCredentialsException;
+import com.agloval.domain.exception.InvalidProductDimensionsException;
 import com.agloval.domain.exception.InvalidRefreshTokenException;
+import com.agloval.domain.exception.InvalidStatusTransitionException;
 import com.agloval.domain.exception.PasswordValidationException;
 import com.agloval.domain.exception.ProductNotFoundException;
 import com.agloval.domain.exception.QuotationNotFoundException;
+import com.agloval.domain.exception.QuotationValidationException;
 import com.agloval.domain.exception.UserNotFoundException;
 import com.agloval.infrastructure.security.RoleAuthorizationException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,6 +48,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateEmailException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateEmail(DuplicateEmailException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTransition(InvalidStatusTransitionException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(QuotationValidationException.class)
+    public ResponseEntity<ErrorResponse> handleQuotationValidation(QuotationValidationException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request.getRequestURI(), ex.getViolations());
+    }
+
+    @ExceptionHandler(InvalidProductDimensionsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDimensions(InvalidProductDimensionsException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request.getRequestURI(), null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

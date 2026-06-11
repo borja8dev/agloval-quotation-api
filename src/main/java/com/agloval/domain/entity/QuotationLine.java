@@ -46,4 +46,7 @@ public class QuotationLine {
     private BigDecimal lineTotal = BigDecimal.ZERO;
 
     private String description;
+
+    @Column(name = "discount_breakdown", columnDefinition = "TEXT")
+    private String discountBreakdown;
 }
